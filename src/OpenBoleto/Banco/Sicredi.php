@@ -1,5 +1,4 @@
 <?php
-
 /*
  * OpenBoleto - Geração de boletos bancários em PHP
  *
@@ -31,33 +30,48 @@ use OpenBoleto\BoletoAbstract;
 use OpenBoleto\Exception;
 
 /**
- * Classe boleto Unicred.
+ * Classe boleto Sicredi S/A
  *
  * @package    OpenBoleto
- * @author     Daniel Garajau <http://github.com/kriansa>
- * @copyright  Copyright (c) 2013 Estrada Virtual (http://www.estradavirtual.com.br)
+ * @author     Diogo Santos <http://github.com/diogoand1>
+ * @copyright  Copyright (c) 2013 Estrada Virtual (http://www.dreamsnet.com.br)
  * @license    MIT License
  * @version    1.0
  */
-class Unicred extends BoletoAbstract
+class Sicredi extends BoletoAbstract
 {
     /**
      * Código do banco
      * @var string
      */
-    protected $codigoBanco = '136';
+    protected $codigoBanco = '748';
 
     /**
      * Localização do logotipo do banco, referente ao diretório de imagens
      * @var string
      */
-    protected $logoBanco = 'unicred.jpg';
+    protected $logoBanco = 'sicredi.jpg';
+
+    /**
+     * Linha de local de pagamento
+     * @var string
+     */
+    protected $localPagamento = 'PAGÁVEL PREFERENCIALMENTE NAS COOPERATIVAS DE CRÉDITO DO Sicredi';
 
     /**
      * Define as carteiras disponíveis para este banco
      * @var array
      */
-    protected $carteiras = array('11', '21', '31', '41', '51');
+    protected $carteiras = array('A', 'B', 'C', 'D', 'E', 'G', 'H', 'I', 'J', 'K');  
+    
+    /**
+     * Define os nomes das carteiras para exibição no boleto
+     * @var array
+     */
+    protected $carteirasNomes = array(
+        'A' => 'DMI', 'B' => 'DR', 'C' => 'NP', 'D' => 'NR', 'E' => 'NS', 
+        'G' => 'RC', 'H' => 'LC', 'I' => 'ND', 'J' => 'DSI', 'K' => 'OS'
+    );
 
     /**
      * Gera o Nosso Número.
@@ -66,7 +80,10 @@ class Unicred extends BoletoAbstract
      */
     protected function gerarNossoNumero()
     {
-        $numero = self::zeroFill($this->getSequencial(), 10);
+        $aa = date('y');
+        $b = 2;
+        $numero = self::zeroFill($this->getSequencial(), 5);
+        $numero = $aa . '/' . $b . $numero;
         $dv = static::modulo11($numero);
         $numero .= '-' . $dv['digito'];
 
@@ -81,7 +98,17 @@ class Unicred extends BoletoAbstract
      */
     public function getCampoLivre()
     {
-        return self::zeroFill($this->getAgencia(), 4) . self::zeroFill($this->getConta(), 10) . self::zeroFill($this->getNossoNumero(false), 11);
+        $numero = '31' . self::zeroFill($this->getNossoNumero(false), 9) . self::zeroFill($this->getAgencia(), 4) . '61' . self::zeroFill($this->getConta(), 5) . '10'; 
+        // 16 = 6 112 20 = 3 4510      
+        $modulo = static::modulo11($numero);
+        
+        if ($modulo['resto'] == 0 or $modulo['resto'] == 1) {
+            $dv = 0;
+        } else if ($modulo['resto'] > 1) {
+            $dv = $modulo['digito'];
+        }
+        
+        return $numero . $dv;                
     }
 
     /**
@@ -91,6 +118,12 @@ class Unicred extends BoletoAbstract
      */
     public function getAgenciaCodigoCedente()
     {
-        return static::zeroFill($this->getAgencia(), 4) . ' / ' . static::zeroFill($this->getConta(), 10);
+        return static::zeroFill($this->getAgencia(), 4) . '.61.' . static::zeroFill($this->getConta(), 5);
+    }
+    
+    public function getCodigoBancoComDv()
+    {      
+        $codigoBanco = $this->getCodigoBanco();
+        return $codigoBanco . '-X';
     }
 }
